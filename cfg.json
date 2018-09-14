@@ -1,0 +1,40 @@
+{
+  "node": {
+    "listenaddr": ":6666",
+    "db": "test",
+    "zone": "local",
+    "interval":10,
+    "idletimeout":10,
+    "writetracing":0,
+    "querytracing":0
+  },
+  "backends": {
+    "local1": {
+      "url": "http://168.61.10.45:8086",
+      "db": "test",
+      "zone":"local",
+      "interval": 1000,
+      "timeout": 10000,
+      "timeoutquery":600000,
+      "maxrowlimit":10000,
+      "checkinterval":1000,
+      "rewriteinterval":10000
+    },
+    "local2": {
+      "url": "http://168.61.10.46:8086",
+      "db": "test",
+      "zone":"local",
+      "interval": 1000,
+      "timeout": 10000,
+      "timeoutquery":600000,
+      "checkinterval":1000,
+      "rewriteinterval":10000
+    }
+  },
+  "keymaps": {
+    "cpu": ["local1"],
+    "df": ["local2"],
+    "_default_": ["local1", "local2"]
+  },
+  "keyignore": ["mem", "net"]
+}

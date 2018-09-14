@@ -18,6 +18,12 @@
 			"revision": ""
 		},
 		{
+			"checksumSHA1": "NaoYWMJoqvHk9x3vUddGfovHUH8=",
+			"path": "github.com/toolkits/file",
+			"revision": "a5b3c5147e07f934d9f9d00b901a20b2529f1a57",
+			"revisionTime": "2016-03-25T03:37:39Z"
+		},
+		{
 			"checksumSHA1": "2FnVZ1894IO0AC4WA2UCvzlGOTQ=",
 			"path": "gopkg.in/natefinch/lumberjack.v2",
 			"revision": "a96e63847dc3c67d17befa69c303767e2f84e54f",

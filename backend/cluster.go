@@ -69,7 +69,7 @@ type InfluxCluster struct {
 	query_executor Querier
 	ForbiddenQuery []*regexp.Regexp
 	ObligatedQuery []*regexp.Regexp
-	cfgsrc         *RedisConfigSource
+	cfgsrc         *JsonConfigSource
 	bas            []BackendAPI
 	backends       map[string]BackendAPI
 	m2bs           map[string][]BackendAPI // measurements to backends
@@ -79,6 +79,7 @@ type InfluxCluster struct {
 	defaultTags    map[string]string
 	WriteTracing   int
 	QueryTracing   int
+	Ignore         []string
 }
 
 type Statistics struct {
@@ -90,31 +91,33 @@ type Statistics struct {
 	PingRequestsFail     int64
 	PointsWritten        int64
 	PointsWrittenFail    int64
+	PointsWrittenDrop    int64
 	WriteRequestDuration int64
 	QueryRequestDuration int64
 }
 
-func NewInfluxCluster(cfgsrc *RedisConfigSource, nodecfg *NodeConfig) (ic *InfluxCluster) {
+func NewInfluxCluster(cfgsrc *JsonConfigSource) (ic *InfluxCluster) {
 	ic = &InfluxCluster{
-		Zone:           nodecfg.Zone,
-		nexts:          nodecfg.Nexts,
+		Zone:           cfgsrc.c.Node.Zone,
+		nexts:          cfgsrc.c.Node.Nexts,
 		query_executor: &InfluxQLExecutor{},
 		cfgsrc:         cfgsrc,
 		bas:            make([]BackendAPI, 0),
 		stats:          &Statistics{},
 		counter:        &Statistics{},
 		ticker:         time.NewTicker(10 * time.Second),
-		defaultTags:    map[string]string{"addr": nodecfg.ListenAddr},
-		WriteTracing:   nodecfg.WriteTracing,
-		QueryTracing:   nodecfg.QueryTracing,
+		defaultTags:    map[string]string{"addr": cfgsrc.c.Node.ListenAddr},
+		WriteTracing:   cfgsrc.c.Node.WriteTracing,
+		QueryTracing:   cfgsrc.c.Node.QueryTracing,
+		Ignore:         cfgsrc.c.KeyIgnore,
 	}
 	host, err := os.Hostname()
 	if err != nil {
 		log.Println(err)
 	}
 	ic.defaultTags["host"] = host
-	if nodecfg.Interval > 0 {
-		ic.ticker = time.NewTicker(time.Second * time.Duration(nodecfg.Interval))
+	if cfgsrc.c.Node.Interval > 0 {
+		ic.ticker = time.NewTicker(time.Second * time.Duration(cfgsrc.c.Node.Interval))
 	}
 
 	err = ic.ForbidQuery(ForbidCmds)
@@ -156,6 +159,7 @@ func (ic *InfluxCluster) Flush() {
 	ic.counter.PingRequestsFail = 0
 	ic.counter.PointsWritten = 0
 	ic.counter.PointsWrittenFail = 0
+	ic.counter.PointsWrittenDrop = 0
 	ic.counter.WriteRequestDuration = 0
 	ic.counter.QueryRequestDuration = 0
 }
@@ -173,6 +177,7 @@ func (ic *InfluxCluster) WriteStatistics() (err error) {
 			"statPingRequestFail":      ic.counter.PingRequestsFail,
 			"statPointsWritten":        ic.counter.PointsWritten,
 			"statPointsWrittenFail":    ic.counter.PointsWrittenFail,
+			"statPointsWrittenDrop":    ic.counter.PointsWrittenDrop,
 			"statQueryRequestDuration": ic.counter.QueryRequestDuration,
 			"statWriteRequestDuration": ic.counter.WriteRequestDuration,
 		},
@@ -333,6 +338,7 @@ func (ic *InfluxCluster) GetBackends(key string) (backends []BackendAPI, ok bool
 	defer ic.lock.RUnlock()
 
 	backends, ok = ic.m2bs[key]
+
 	// match use prefix
 	if !ok {
 		for k, v := range ic.m2bs {
@@ -343,6 +349,17 @@ func (ic *InfluxCluster) GetBackends(key string) (backends []BackendAPI, ok bool
 			}
 		}
 	}
+
+	//agchrys drop measurement which resides in ignore array
+	if !ok {
+		for _, ig := range ic.Ignore {
+			if strings.HasPrefix(key, ig) {
+				ok = false
+				return
+			}
+		}
+	}
+
 
 	if !ok {
 		backends, ok = ic.m2bs["_default_"]
@@ -375,6 +392,8 @@ func (ic *InfluxCluster) Query(w http.ResponseWriter, req *http.Request) (err er
 		return
 	}
 
+	//agchrys 旁路
+
 	err = ic.query_executor.Query(w, req)
 	if err == nil {
 		return
@@ -387,6 +406,7 @@ func (ic *InfluxCluster) Query(w http.ResponseWriter, req *http.Request) (err er
 		atomic.AddInt64(&ic.stats.QueryRequestsFail, 1)
 		return
 	}
+
 
 	key, err := GetMeasurementFromInfluxQL(q)
 	if err != nil {
@@ -460,11 +480,11 @@ func (ic *InfluxCluster) WriteRow(line []byte) {
 		return
 	}
 
+	//agchrys 增加measurement丢弃
 	bs, ok := ic.GetBackends(key)
 	if !ok {
-		log.Printf("new measurement: %s\n", key)
-		atomic.AddInt64(&ic.stats.PointsWrittenFail, 1)
-		// TODO: new measurement?
+		log.Printf("drop measurement: %s\n", key)
+		atomic.AddInt64(&ic.stats.PointsWrittenDrop, 1)
 		return
 	}
 
