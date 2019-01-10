@@ -7,6 +7,8 @@ package backend
 import (
 	"errors"
 	"log"
+	"sync"
+	"encoding/json"
 )
 
 const (
@@ -15,7 +17,27 @@ const (
 
 var (
 	ErrIllegalConfig = errors.New("illegal config")
+	config *GlobelConfig
+	configLock = new(sync.RWMutex)
 )
+
+func Config() *GlobelConfig {
+	configLock.RLock()
+	defer configLock.RUnlock()
+	return config
+}
+
+func LoadConfig(content string) {
+	var cfg GlobelConfig
+	err := json.Unmarshal([]byte(content), &cfg)
+	if err != nil {
+		log.Fatalln("parse config file fail:", err)
+	}
+
+	configLock.Lock()
+	defer configLock.Unlock()
+	config = &cfg
+}
 
 //func LoadStructFromMap(data map[string]string, o interface{}) (err error) {
 //	var x int
@@ -69,12 +91,22 @@ type BackendConfig struct {
 	WriteOnly       int    `json:"writeonly"`
 }
 
+type KafkaConfig struct {
+	Enabled  bool              `json:"enabled"`
+	Debug    bool              `json:"debug"`
+	Timeout  int               `json:"timeout"`
+	Topic    string            `json:"topic"`
+	MaxRetry int               `json:"retry"`
+	Cluster  map[string]string `json:"cluster"`
+}
+
 //agchrys
 type GlobelConfig struct {
 	Node      NodeConfig               `json:"node"`
 	Backs     map[string]BackendConfig `json:"backends"`
 	Keymaps   map[string][]string      `json:"keymaps"`
-	KeyIgnore []string                 `json:keyignore`
+	KeyIgnore []string                 `json:"keyignore"`
+	Kafka     KafkaConfig         	   `json:"kafka"`
 }
 
 type JsonConfigSource struct {

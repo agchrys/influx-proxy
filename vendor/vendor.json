@@ -3,6 +3,42 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "UMkQ3glf4TWVIxamDDgOLqoSlpE=",
+			"path": "github.com/Shopify/sarama",
+			"revision": "647feef69a1a7e0e23cccceeb786176bc4fcf5ea",
+			"revisionTime": "2018-08-20T17:20:58Z"
+		},
+		{
+			"checksumSHA1": "aENNVxKxF9h9PfvTIstiAS5I3Lg=",
+			"path": "github.com/davecgh/go-spew/spew",
+			"revision": "8991bc29aa16c548c550c7ff78260e27b9ab7c73",
+			"revisionTime": "2018-02-21T22:46:20Z"
+		},
+		{
+			"checksumSHA1": "o0psFRtB8EoelTAEhJSqrtXdwJY=",
+			"path": "github.com/eapache/go-resiliency/breaker",
+			"revision": "ea41b0fad31007accc7f806884dcdf3da98b79ce",
+			"revisionTime": "2018-03-26T13:24:23Z"
+		},
+		{
+			"checksumSHA1": "4X8AHXOou+1mBPRxjUyU7jyu8vQ=",
+			"path": "github.com/eapache/go-xerial-snappy",
+			"revision": "776d5712da21bc4762676d614db1d8a64f4238b0",
+			"revisionTime": "2018-08-14T17:44:37Z"
+		},
+		{
+			"checksumSHA1": "Or1sHBLnbwlI+dfW/Io0CF0bkok=",
+			"path": "github.com/eapache/queue",
+			"revision": "093482f3f8ce946c05bcba64badd2c82369e084d",
+			"revisionTime": "2018-02-27T14:14:24Z"
+		},
+		{
+			"checksumSHA1": "iDAyJMnswBRktzVlZSg7qdI5+A8=",
+			"path": "github.com/golang/snappy",
+			"revision": "2e65f85255dbc3072edf28d6b5b8efc472979f5a",
+			"revisionTime": "2018-05-18T05:39:59Z"
+		},
+		{
 			"checksumSHA1": "t06GpE7X4olsyp2d26RuKCDzC7w=",
 			"path": "github.com/influxdata/influxdb/client/v2",
 			"revision": ""
@@ -16,6 +52,24 @@
 			"checksumSHA1": "Z0Bb5PWa5WL/j5Dm2KJCLGn1l7U=",
 			"path": "github.com/influxdata/influxdb/pkg/escape",
 			"revision": ""
+		},
+		{
+			"checksumSHA1": "LU32ZKBeCjPv/XH/43qPIOoRm00=",
+			"path": "github.com/pierrec/lz4",
+			"revision": "6b9367c9ff401dbc54fabce3fb8d972e799b702d",
+			"revisionTime": "2018-06-10T16:27:16Z"
+		},
+		{
+			"checksumSHA1": "79zrAmglk05gFr1xUbkp+zNWLQM=",
+			"path": "github.com/pierrec/lz4/internal/xxh32",
+			"revision": "6b9367c9ff401dbc54fabce3fb8d972e799b702d",
+			"revisionTime": "2018-06-10T16:27:16Z"
+		},
+		{
+			"checksumSHA1": "T+faEW56/tpzBwwQ6OCChvQsJbQ=",
+			"path": "github.com/rcrowley/go-metrics",
+			"revision": "e2704e165165ec55d062f5919b4b29494e9fa790",
+			"revisionTime": "2018-05-03T17:46:38Z"
 		},
 		{
 			"checksumSHA1": "NaoYWMJoqvHk9x3vUddGfovHUH8=",

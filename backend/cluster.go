@@ -19,6 +19,7 @@ import (
 	"unsafe"
 
 	"github.com/shell909090/influx-proxy/monitor"
+	"github.com/Shopify/sarama"
 )
 
 var (
@@ -80,6 +81,10 @@ type InfluxCluster struct {
 	WriteTracing   int
 	QueryTracing   int
 	Ignore         []string
+	//agchrys kafka producer
+	KafkaProducer  sarama.AsyncProducer
+	KafKaOnline    bool
+	KafkaFailCount int
 }
 
 type Statistics struct {
@@ -110,6 +115,8 @@ func NewInfluxCluster(cfgsrc *JsonConfigSource) (ic *InfluxCluster) {
 		WriteTracing:   cfgsrc.c.Node.WriteTracing,
 		QueryTracing:   cfgsrc.c.Node.QueryTracing,
 		Ignore:         cfgsrc.c.KeyIgnore,
+		KafkaFailCount: 0,
+		KafKaOnline:    true,
 	}
 	host, err := os.Hostname()
 	if err != nil {
@@ -527,6 +534,12 @@ func (ic *InfluxCluster) Write(p []byte) (err error) {
 		ic.WriteRow(line)
 	}
 
+
+	//写kafka
+	if Config().Kafka.Enabled {
+		go ic.WriteKafka(p)
+	}
+
 	ic.lock.RLock()
 	defer ic.lock.RUnlock()
 	if len(ic.bas) > 0 {
@@ -540,6 +553,83 @@ func (ic *InfluxCluster) Write(p []byte) (err error) {
 	}
 
 	return
+}
+
+func (ic *InfluxCluster)WriteKafka(buf []byte) {
+	if ic.KafKaOnline == false {
+		return
+	}
+	retry := Config().Kafka.MaxRetry
+	var err error
+	for i := 0; i < retry; i++ {
+		err = ic.doSendToKafka(buf)
+		if err == nil {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if err != nil {
+		ic.KafkaFailCount += 1
+		if ic.KafkaFailCount == 100 {
+			ic.KafKaOnline = false
+		}
+		log.Println(err)
+		return
+	}
+}
+
+func (ic *InfluxCluster) GetKafkaProducer()(sarama.AsyncProducer) {
+	if ic.KafkaProducer == nil {
+		config := sarama.NewConfig()
+		//等待服务器所有副本都保存成功后的响应
+		config.Producer.RequiredAcks = sarama.WaitForAll
+		//指定分区类型
+		config.Producer.Partitioner = sarama.NewRandomPartitioner
+		//是否等待成功和失败后的响应,只有上面的RequireAcks设置不是NoReponse这里才有用.
+		config.Producer.Return.Successes = true
+		config.Producer.Return.Errors = true
+		config.Producer.Timeout = time.Millisecond * time.Duration(Config().Kafka.Timeout)
+
+		if len(Config().Kafka.Cluster) != 1 {
+			log.Fatalf("kafka集群地址配置错误\n")
+			return nil
+		}
+
+		var addr []string
+		for _, v := range Config().Kafka.Cluster {
+			addr = strings.Split(v, ",")
+		}
+		producer, err := sarama.NewAsyncProducer(addr, config)
+		if err != nil {
+			log.Fatalf("链接kafka集群失败：%s\n", err)
+			return nil
+		}
+		ic.KafkaProducer = producer
+	}
+
+	return ic.KafkaProducer
+}
+
+func (ic *InfluxCluster)doSendToKafka(buf []byte) (err error) {
+	//defer producer.AsyncClose()
+
+	msg := &sarama.ProducerMessage{
+		Topic: Config().Kafka.Topic,
+		Value: sarama.ByteEncoder(buf),
+	}
+
+	ic.GetKafkaProducer().Input() <- msg
+
+	select{
+	case success := <-ic.GetKafkaProducer().Successes():
+		if Config().Kafka.Debug {
+			log.Println("offset: ", success.Offset, "timestamp: ", success.Timestamp.String(),
+				"partitions: ", success.Partition)
+		}
+		return nil
+	case fail := <-ic.GetKafkaProducer().Errors():
+		return fail.Err
+	}
 }
 
 func (ic *InfluxCluster) Close() (err error) {

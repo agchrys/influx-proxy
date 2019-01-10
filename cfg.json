@@ -36,5 +36,15 @@
     "df": ["local2"],
     "_default_": ["local1", "local2"]
   },
-  "keyignore": ["mem", "net"]
+  "keyignore": ["mem", "net"],
+  "kafka": {
+    "enabled": true,
+    "debug": true,
+    "timeout": 5000,
+    "topic": "influxdb",
+    "retry": 3,
+    "cluster": {
+      "kafka" : "168.61.2.47:9092,168.61.2.48:9092,168.61.2.49:9092"
+    }
+  }
 }

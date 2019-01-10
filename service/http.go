@@ -38,6 +38,26 @@ func (hs *HttpService) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/write", hs.HandlerWrite)
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/kafka", hs.HandlerKafka)
+}
+
+func (hs *HttpService) HandlerKafka(w http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+	w.Header().Add("X-Influxdb-Version", backend.VERSION)
+	enable := req.FormValue("enable")
+
+	if enable == "0" {
+		hs.ic.KafKaOnline = false
+	} else if enable == "1" {
+		hs.ic.KafKaOnline = true
+	} else {
+		w.WriteHeader(400)
+		w.Write([]byte("enable must be 0 or 1"))
+		return
+	}
+
+	w.WriteHeader(204)
+	return
 }
 
 func (hs *HttpService) HandlerReload(w http.ResponseWriter, req *http.Request) {
@@ -74,6 +94,7 @@ func (hs *HttpService) HandlerQuery(w http.ResponseWriter, req *http.Request) {
 	db := req.FormValue("db")
 	if hs.db != "" {
 		if db != hs.db {
+			log.Printf("db:", db, ":", hs.db)
 			w.WriteHeader(404)
 			w.Write([]byte("database not exist."))
 			return

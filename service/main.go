@@ -5,7 +5,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"log"
 	"net/http"
@@ -29,7 +28,7 @@ func init() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
 
 	flag.StringVar(&LogFilePath, "log", "var/app.log", "output file")
-	flag.StringVar(&ConfigFile, "c", "", "config file")
+	flag.StringVar(&ConfigFile, "c", "cfg.json", "config file")
 	//flag.StringVar(&NodeName, "node", "l1", "node name")
 	//flag.StringVar(&RedisAddr, "redis", "localhost:6379", "config file")
 	flag.Parse()
@@ -93,11 +92,9 @@ func main() {
 		log.Fatalln("read config file:", ConfigFile, "fail:", err)
 	}
 
-	var cfg backend.GlobelConfig
-	err = json.Unmarshal([]byte(configContent), &cfg)
-	if err != nil {
-		log.Fatalln("parse config file:", ConfigFile, "fail:", err)
-	}
+
+	backend.LoadConfig(configContent)
+
 
 	//if NodeName != "" {
 	//	cfg.Node = NodeName
@@ -115,20 +112,20 @@ func main() {
 	//	return
 	//}
 
-	jcs := backend.NewJsonConfigSource(&cfg)
+	jcs := backend.NewJsonConfigSource(backend.Config())
 	ic := backend.NewInfluxCluster(jcs)
 	ic.LoadConfig()
 
 	mux := http.NewServeMux()
-	NewHttpService(ic, cfg.Node.DB).Register(mux)
+	NewHttpService(ic, backend.Config().Node.DB).Register(mux)
 
 	log.Printf("http service start.")
 	server := &http.Server{
-		Addr:        cfg.Node.ListenAddr,
+		Addr:        backend.Config().Node.ListenAddr,
 		Handler:     mux,
-		IdleTimeout: time.Duration(cfg.Node.IdleTimeout) * time.Second,
+		IdleTimeout: time.Duration(backend.Config().Node.IdleTimeout) * time.Second,
 	}
-	if cfg.Node.IdleTimeout <= 0 {
+	if backend.Config().Node.IdleTimeout <= 0 {
 		server.IdleTimeout = 10 * time.Second
 	}
 	err = server.ListenAndServe()
